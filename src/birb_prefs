@@ -1,0 +1,15 @@
+# Settings file for the birbs telegram bot
+# Github: https://github.com/Zoidster/BirbBot
+
+birbs_folder = './Birbs/'
+birbs_cache_file = './birb_cache'
+
+# Create a reddit app and put the credentials here
+[reddit]
+    reddit_client_id = 'XXXXXXXXXXXXXX'
+    reddit_client_secret = 'XXXXXXXXXXXXXXXXXXXXXXXXXX'
+    reddit_user_agent = 'pc:de.nixdorf.BirbsLoader:v0.0.1 (by /u/Zoidsty)'
+
+# Create a telegram bot using @BotFather and put the generated token here
+[telegram]
+    telegram_bot_token = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
