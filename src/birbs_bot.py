@@ -8,13 +8,13 @@ from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import CommandHandler
 import logging
-import birb_scraper
 import glob
 import random
 import ntpath
 import os
 import shelve
 from configobj import ConfigObj
+import birb_scraper
 
 birbs_folder = './Birbs/'
 cache_file = './birb_cache'
@@ -110,7 +110,7 @@ def main():
 
     print('Scraping birbs')
     reddit_conf = config['reddit']
-    birbScraper.start(reddit_conf['reddit_client_id'], reddit_conf['reddit_client_secret'], reddit_conf['reddit_user_agent']
+    birb_scraper.start(reddit_conf['reddit_client_id'], reddit_conf['reddit_client_secret'], reddit_conf['reddit_user_agent']
                       , birbs_folder)
     print('Birbs scraped')
 
