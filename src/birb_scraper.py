@@ -1,12 +1,5 @@
 #! python3
 
-
-# KdOYbt2sSV58mg
-# secret	ZYebLAt4NsZeEKcjPFCTFi5s1P4
-# pc:de.nixdorf.BirbsLoader:v0.0.1 (by /u/Zoidsty)
-#
-#
-
 import os
 import praw
 import re

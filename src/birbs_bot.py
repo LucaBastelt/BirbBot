@@ -8,7 +8,7 @@ from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import CommandHandler
 import logging
-import birbScraper
+import birb_scraper
 import glob
 import random
 import ntpath
