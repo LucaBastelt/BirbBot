@@ -1,6 +1,7 @@
 # Settings file for the birbs telegram bot
 # Github: https://github.com/Zoidster/BirbBot
 
+birbs_folder = ./Birbs/
 birbs_subreddit = birbs
 other_images_folder = ./Others
 birbs_cache_file = './birb_cache'
