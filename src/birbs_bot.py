@@ -90,18 +90,25 @@ class BirbBot:
                            caption=os.path.splitext(ntpath.basename(photo))[0])
 
     def start_callback(self, bot, update):
+        other_image_folders = set([name for name in os.listdir(self.others_folder)
+                                   if os.path.isdir(os.path.join(self.others_folder, name))])
         bot.send_message(chat_id=update.message.chat_id,
                          text='I am the birbs bot, I deliver the birbs.\n'
                               'Type /birb receive a brand new birb from our newest collection of premium birbs!.\n'
+                              'Other content is available via the the following commands:\n' +
+                              ', '.join(other_image_folders) + '\n' +
                               'Code located at https://github.com/Zoidster/BirbBot\n'
                               'Author: @LucaMN')
 
     def show_help_callback(self, bot, update):
-        config = ConfigObj(self.conf_file)
+        other_image_folders = set([name for name in os.listdir(self.others_folder)
+                                   if os.path.isdir(os.path.join(self.others_folder, name))])
         bot.send_message(chat_id=update.message.chat_id,
-                         text='Type /birb receive a brand new birb from our newest collection of premium birbs!\n'
-                              'Other contents are the following commands/subreddits: ' + config['subreddits'] + '\n'
-                              'Access via /name')
+                         text='Type /birb receive a brand new birb from our newest collection of premium birbs!\n' +
+                              'Other content is available via the the following commands:\n' +
+                              ', '.join(other_image_folders) + '\n' +
+                              'Code located at https://github.com/Zoidster/BirbBot\n'
+                              'Author: @LucaMN')
 
     def add_callback(self, bot, update, args):
         config = ConfigObj(self.conf_file)
