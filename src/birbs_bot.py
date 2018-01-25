@@ -121,10 +121,10 @@ class BirbBot:
         if len(args) > 1:
             handle = re.sub(r'\W+', '', args[1])
         if 'subreddits' not in config:
-            config['subreddits'] = {subreddit: subreddit if handle != '' else handle}
+            config['subreddits'] = {subreddit: subreddit if handle == '' else handle}
             config.write()
         elif args[0] not in config['subreddits']:
-            config['subreddits'][subreddit] = subreddit if handle != '' else handle
+            config['subreddits'][subreddit] = subreddit if handle == '' else handle
             config.write()
 
         start_new_scraper(subreddit, '{}/{}/'.format(self.others_folder, config['subreddits'][subreddit]),
