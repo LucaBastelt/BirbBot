@@ -123,7 +123,7 @@ class BirbBot:
         if 'subreddits' not in config:
             config['subreddits'] = {subreddit: subreddit if handle == '' else handle}
             config.write()
-        elif args[0] not in config['subreddits']:
+        else:
             config['subreddits'][subreddit] = subreddit if handle == '' else handle
             config.write()
 
