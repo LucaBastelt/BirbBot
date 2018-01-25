@@ -1,3 +1,6 @@
+prawcore
+requests
 configobj
 schedule
 praw
+python-telegram-bot

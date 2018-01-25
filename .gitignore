@@ -3,6 +3,7 @@
 *.dir
 *_creds
 *Birbs/
+*Others/
 *.idea/
 
 # Below this line default github python gitignore
