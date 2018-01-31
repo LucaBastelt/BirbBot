@@ -6,3 +6,5 @@ Other subreddits can be added via the '/add subreddit [handle]' command. The han
 '/add pics pictures' would result in any user being able to get images from the /pics subreddit via the '/pictures' command
 
 To use, add your reddit and telegram app credentials in the prefs file.
+
+Built on the python telegram bot api: https://github.com/python-telegram-bot/python-telegram-bot
