@@ -6,37 +6,35 @@ from prawcore import NotFound
 import re
 import requests
 import schedule
+import shelve
+import hashlib
 import time
 from threading import Thread
 
 
-class RedditConfig:
+class ScraperConfig:
 
-    def __init__(self, reddit_client_id, reddit_client_secret, reddit_user_agent):
+    def __init__(self, reddit_client_id, reddit_client_secret, reddit_user_agent, shelve_conf_path,
+                 shelve_filename_keyword):
         self.client_id = reddit_client_id
         self.client_secret = reddit_client_secret
         self.user_agent = reddit_user_agent
+        self.shelve_conf_path = shelve_conf_path
+        self.shelve_keyword = shelve_filename_keyword
 
 
 class Scraper:
 
-    def __init__(self, reddit_config: RedditConfig, _folder='./Birbs/', _subreddit='birbs'):
+    def __init__(self, scraper_config: ScraperConfig, _folder='./Birbs/', _subreddit='birbs'):
 
         self.folder = _folder
-        # print('Set folder as {}'.format(_folder))
         self.subreddit = _subreddit
-        # print('Set subreddit as {}'.format(_subreddit))
-        self.client_id = reddit_config.client_id
-        # print('Set reddit client id as {}'.format(client_id))
-        self.client_secret = reddit_config.client_secret
-        # print('Set reddit client secret as {}'.format(client_secret))
-        self.user_agent = reddit_config.user_agent
-        # print('Set reddit user agent as {}'.format(user_agent))
+        self.scraper_config = scraper_config
 
     def crawl(self):
-        reddit = praw.Reddit(client_id=self.client_id,
-                             client_secret=self.client_secret,
-                             user_agent=self.user_agent)
+        reddit = praw.Reddit(client_id=self.scraper_config.client_id,
+                             client_secret=self.scraper_config.client_secret,
+                             user_agent=self.scraper_config.user_agent)
 
         if not self.sub_exists(self.subreddit, reddit):
             print("Subreddit not found! " + self.subreddit)
@@ -66,6 +64,30 @@ class Scraper:
         thread.start()
         print('Started update Thread')
 
+    def download(self, _url_list, _folder):
+        counter = 0
+
+        cache = shelve.open(self.scraper_config.shelve_conf_path)
+        file_names = {}
+        if self.scraper_config.shelve_keyword in cache:
+            file_names = cache[self.scraper_config.shelve_keyword]
+
+        for url in _url_list:
+            print('.', end='', flush=True)
+            if url.url[-3:] == 'jpg':
+                file_name = url.title
+                hashed_name = hashlib.md5(file_name.encode()).hexdigest() + '.jpg'
+                path = _folder + hashed_name
+                if not os.path.isfile(path) and file_name not in file_names.values():
+                    img = requests.get(url.url).content
+                    with open(path, 'wb') as handler:
+                        handler.write(img)
+                        file_names[hashed_name] = file_name
+                        cache[self.scraper_config.shelve_keyword] = file_names
+                    counter += 1
+        cache.close()
+        return counter
+
     @staticmethod
     def update():
         while True:
@@ -80,18 +102,3 @@ class Scraper:
         except NotFound:
             exists = False
         return exists
-
-    @staticmethod
-    def download(_url_list, _folder):
-        counter = 0
-        for url in _url_list:
-            print('.', end='', flush=True)
-            if url.url[-3:] == 'jpg':
-                file_name = re.sub(r"[^\w\s]+", '', url.title)
-                file_name = _folder + file_name + '.jpg'
-                if not os.path.isfile(file_name):
-                    img = requests.get(url.url).content
-                    with open(file_name, 'wb') as handler:
-                        handler.write(img)
-                    counter += 1
-        return counter

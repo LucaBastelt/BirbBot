@@ -16,9 +16,10 @@ import re
 import shelve
 from configobj import ConfigObj
 
-from scraper import Scraper, RedditConfig
+from scraper import Scraper, ScraperConfig
 
 cache_used_images_keyword = 'used_pictures'
+shelve_filename_keyword = 'filename_hashes'
 
 
 # Using ConfigObj
@@ -38,9 +39,10 @@ class BirbBot:
 
         reddit_conf = config['reddit']
 
-        self.reddit_config = RedditConfig(reddit_conf['reddit_client_id'],
-                                          reddit_conf['reddit_client_secret'],
-                                          reddit_conf['reddit_user_agent'])
+        self.reddit_config = ScraperConfig(reddit_conf['reddit_client_id'],
+                                           reddit_conf['reddit_client_secret'],
+                                           reddit_conf['reddit_user_agent'],
+                                           self.cache_file, shelve_filename_keyword)
 
         start_new_scraper(self.birbs_subreddit, self.birbs_folder, self.reddit_config)
 
@@ -80,14 +82,14 @@ class BirbBot:
 
     def birb_callback(self, bot, update):
         print('Sending birb to ' + update.message.from_user.name + ' - ' + update.message.text)
-        photo = get_photo(update.message.from_user, self.cache_file, self.birbs_folder)
+        photo, title = get_photo(update.message.from_user, self.cache_file, self.birbs_folder)
         if photo is None:
             bot.send_message(chat_id=update.message.chat_id,
                              text='There are no more birbs in storage! Whaaaat? Contact '
                                   '@LucaMN for more birbs!')
         else:
             bot.send_photo(chat_id=update.message.chat_id, photo=open(photo, 'rb'),
-                           caption=os.path.splitext(ntpath.basename(photo))[0])
+                           caption=title)
 
     def start_callback(self, bot, update):
         other_image_folders = set([name for name in os.listdir(self.others_folder)
@@ -142,13 +144,13 @@ class BirbBot:
 
             if command in other_image_folders:
                 print('Sending {} to {}'.format(command, update.message.from_user.name))
-                photo = get_photo(update.message.from_user, self.cache_file, self.others_folder + '/' + command + '/')
+                photo, title = get_photo(update.message.from_user, self.cache_file, self.others_folder + '/' + command + '/')
                 if photo is None:
                     bot.send_message(chat_id=update.message.chat_id,
                                      text='There are no images in storage for that keyword.')
                 else:
                     bot.send_photo(chat_id=update.message.chat_id, photo=open(photo, 'rb'),
-                                   caption=os.path.splitext(ntpath.basename(photo))[0])
+                                   caption=title)
             else:
                 bot.send_message(chat_id=update.message.chat_id, text="Sorry, I didn't understand that command.\n"
                                                                       "Type /help to see all commands")
@@ -169,15 +171,21 @@ def get_photo(user, cache_file, folder):
     elif len(not_sent) > 0:
         used.append(not_sent[0])
         used_pictures[user.name] = used
-        ret = not_sent[0]
+        photo = not_sent[0]
     else:
         used_pictures[user.name] = [photos[0]]
-        ret = photos[0]
+        photo = photos[0]
 
     settings[cache_used_images_keyword] = used_pictures
-    settings.close()
 
-    return ret
+    file_names = settings[shelve_filename_keyword]
+    if ntpath.basename(photo) in file_names:
+        title = file_names[ntpath.basename(photo)]
+    else:
+        title = os.path.splitext(ntpath.basename(photo))[0]
+
+    settings.close()
+    return photo, title
 
 
 def get_photos(command):
