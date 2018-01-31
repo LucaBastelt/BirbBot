@@ -119,21 +119,26 @@ class BirbBot:
         subreddit = re.sub(r'\W+', '', args[0])
 
         # The handle is the folder and command the images will be accessible over. Also alphanumeric
-        handle = ''
         if len(args) > 1:
             handle = re.sub(r'\W+', '', args[1])
+        else:
+            handle = subreddit
+
         if 'subreddits' not in config:
-            config['subreddits'] = {subreddit: subreddit if handle == '' else handle}
+            config['subreddits'] = {subreddit: handle}
             config.write()
         else:
-            config['subreddits'][subreddit] = subreddit if handle == '' else handle
+            config['subreddits'][subreddit] = handle
             config.write()
+
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Added the new subreddit to scrape, please wait a bit until the download is complete!")
 
         start_new_scraper(subreddit, '{}/{}/'.format(self.others_folder, config['subreddits'][subreddit]),
                           self.reddit_config)
 
         bot.send_message(chat_id=update.message.chat_id,
-                         text="Added the new subreddit to scrape, please wait a bit until the download is complete!")
+                         text="Scraping complete, {} images now available".format(handle))
 
     def unknown_callback(self, bot, update):
         if self.others_folder != '':
