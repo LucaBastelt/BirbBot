@@ -2,6 +2,10 @@
 *.dat
 *.dir
 *_creds
+*Others/
+*aww/
+*lossedits/
+*loss/
 *Birbs/
 *Others/
 *.idea/
