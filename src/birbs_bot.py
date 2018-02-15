@@ -19,6 +19,7 @@ from configobj import ConfigObj
 from scraper import Scraper, ScraperConfig
 
 shelve_filename_keyword = 'filename_hashes'
+cache_subs = 'subs'
 
 
 # Using ConfigObj
@@ -68,6 +69,12 @@ class BirbBot:
         birb_handler = CommandHandler('birb', self.birb_callback)
         dispatcher.add_handler(birb_handler)
 
+        subscribe_handler = CommandHandler('subscribe', self.subscribe_callback, pass_args=True)
+        dispatcher.add_handler(subscribe_handler)
+
+        unsubscribe_handler = CommandHandler('unsubscribe', self.unsubscribe_callback, pass_args=True)
+        dispatcher.add_handler(unsubscribe_handler)
+
         help_handler = CommandHandler('help', self.show_help_callback)
         dispatcher.add_handler(help_handler)
 
@@ -79,16 +86,21 @@ class BirbBot:
 
         updater.start_polling()
 
+        j = updater.job_queue
+        j.run_repeating(self.callback_subs, interval=3600, first=0)
+
+    def callback_subs(self, bot, job):
+        config = ConfigObj(self.conf_file)
+        if cache_subs not in config:
+            return
+        for chat in config[cache_subs]:
+            for folder in config[cache_subs][chat]:
+                print('Sending {} to chat {}'.format(folder, chat))
+                self.send_photo(bot, chat, folder)
+
     def birb_callback(self, bot, update):
         print('Sending birb to ' + update.message.from_user.name + ' - ' + update.message.text)
-        photo, title = get_photo(self.cache_file, self.birbs_folder)
-        if photo is None:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text='There are no more birbs in storage! Whaaaat? Contact '
-                                  '@LucaMN for more birbs!')
-        else:
-            bot.send_photo(chat_id=update.message.chat_id, photo=open(photo, 'rb'),
-                           caption=title)
+        self.send_birb(bot, update.message.chat)
 
     def start_callback(self, bot, update):
         other_image_folders = set([name for name in os.listdir(self.others_folder)
@@ -101,6 +113,52 @@ class BirbBot:
                               'Code located at https://github.com/Zoidster/BirbBot\n'
                               'Author: @LucaMN')
 
+    def subscribe_callback(self, bot, update, args):
+        chat = str(update.message.chat_id)
+        config = ConfigObj(self.conf_file)
+        if cache_subs not in config:
+            config[cache_subs] = {}
+            config.write()
+            config.reload()
+        if chat not in config[cache_subs]:
+            config[cache_subs][chat] = []
+            config.write()
+            config.reload()
+
+        for folder in args:
+            if folder not in config[cache_subs][chat]:
+                chat_subs = config[cache_subs][chat]
+                chat_subs.append(folder)
+                config[cache_subs][chat] = chat_subs
+                config.write()
+                config.reload()
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text='Subscription successful! Sending an image from {} every hour'.format(folder))
+            else:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text='You are already subscribed to that!')
+
+    def unsubscribe_callback(self, bot, update, args):
+        chat = str(update.message.chat_id)
+        config = ConfigObj(self.conf_file)
+        if cache_subs not in config:
+            return
+        if chat not in config[cache_subs]:
+            return
+
+        for folder in args:
+            if folder in config[cache_subs][chat]:
+                chat_subs = config[cache_subs][chat]
+                chat_subs.remove(folder)
+                config[cache_subs][chat] = chat_subs
+                config.write()
+                config.reload()
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text='Unsubscription successful! Not sending images from {} anymore'.format(folder))
+            else:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text='Unsubscription unsuccessful! You are not subscribed to {}'.format(folder))
+
     def show_help_callback(self, bot, update):
         other_image_folders = set([name for name in os.listdir(self.others_folder)
                                    if os.path.isdir(os.path.join(self.others_folder, name))])
@@ -108,6 +166,7 @@ class BirbBot:
                          text='Type /birb receive a brand new birb from our newest collection of premium birbs!\n' +
                               'Other content is available via the the following commands:\n' +
                               ', '.join(other_image_folders) + '\n' +
+                              'Use the subscribe command with any amount of arguments to get hourly images\n'
                               'Code located at https://github.com/Zoidster/BirbBot\n'
                               'Author: @LucaMN')
 
@@ -141,23 +200,39 @@ class BirbBot:
 
     def unknown_callback(self, bot, update):
         if self.others_folder != '':
+            command = update.message.text[1:].split('@')[0]
+            print('Sending {} to {}'.format(command, update.message.from_user.name))
+            self.send_photo(bot, update.message.chat_id, command)
+
+    def send_birb(self, bot, chat):
+        self.send_photo(bot, chat, 'birb')
+
+    def send_photo(self, bot, chat, command):
+        if command == 'birbs' or command == 'birb':
+            photo, title = get_photo(self.cache_file, self.birbs_folder)
+            if photo is None:
+                bot.send_message(chat_id=chat,
+                                 text='There are no more birbs in storage! Contact '
+                                      '@LucaMN for more birbs!')
+            else:
+                bot.send_photo(chat_id=chat, photo=open(photo, 'rb'),
+                               caption=title)
+        else:
             other_image_folders = [name for name in os.listdir(self.others_folder)
                                    if os.path.isdir(os.path.join(self.others_folder, name))]
-            command = update.message.text[1:].split('@')[0]
-            print('Special image requested, command: '.format(command) + ' - ' + update.message.text)
 
             if command in other_image_folders:
-                print('Sending {} to {}'.format(command, update.message.from_user.name))
                 photo, title = get_photo(self.cache_file, self.others_folder + '/' + command + '/')
                 if photo is None:
-                    bot.send_message(chat_id=update.message.chat_id,
-                                     text='There are no images in storage for that keyword.')
+                    bot.send_message(chat_id=chat,
+                                     text='There are no images in storage for the keyword {}'.format(command))
                 else:
-                    bot.send_photo(chat_id=update.message.chat_id, photo=open(photo, 'rb'),
+                    bot.send_photo(chat_id=chat, photo=open(photo, 'rb'),
                                    caption=title)
             else:
-                bot.send_message(chat_id=update.message.chat_id, text="Sorry, I didn't understand that command.\n"
-                                                                      "Type /help to see all commands")
+                bot.send_message(chat_id=chat,
+                                 text="Sorry, I didn't understand the command {}.\nType /help to see all commands".format(
+                                     command))
 
 
 def get_photo(cache_file, folder):
