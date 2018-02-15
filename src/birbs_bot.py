@@ -100,7 +100,7 @@ class BirbBot:
 
     def birb_callback(self, bot, update):
         print('Sending birb to ' + update.message.from_user.name + ' - ' + update.message.text)
-        self.send_birb(bot, update.message.chat)
+        self.send_birb(bot, update.message.chat_id)
 
     def start_callback(self, bot, update):
         other_image_folders = set([name for name in os.listdir(self.others_folder)
@@ -114,6 +114,8 @@ class BirbBot:
                               'Author: @LucaMN')
 
     def subscribe_callback(self, bot, update, args):
+        if len(args) == 0:
+            args = ['birbs']
         chat = str(update.message.chat_id)
         config = ConfigObj(self.conf_file)
         if cache_subs not in config:
