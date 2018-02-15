@@ -18,7 +18,6 @@ from configobj import ConfigObj
 
 from scraper import Scraper, ScraperConfig
 
-cache_used_images_keyword = 'used_pictures'
 shelve_filename_keyword = 'filename_hashes'
 
 
@@ -82,7 +81,7 @@ class BirbBot:
 
     def birb_callback(self, bot, update):
         print('Sending birb to ' + update.message.from_user.name + ' - ' + update.message.text)
-        photo, title = get_photo(update.message.from_user, self.cache_file, self.birbs_folder)
+        photo, title = get_photo(self.cache_file, self.birbs_folder)
         if photo is None:
             bot.send_message(chat_id=update.message.chat_id,
                              text='There are no more birbs in storage! Whaaaat? Contact '
@@ -149,7 +148,7 @@ class BirbBot:
 
             if command in other_image_folders:
                 print('Sending {} to {}'.format(command, update.message.from_user.name))
-                photo, title = get_photo(update.message.from_user, self.cache_file, self.others_folder + '/' + command + '/')
+                photo, title = get_photo(self.cache_file, self.others_folder + '/' + command + '/')
                 if photo is None:
                     bot.send_message(chat_id=update.message.chat_id,
                                      text='There are no images in storage for that keyword.')
@@ -161,27 +160,17 @@ class BirbBot:
                                                                       "Type /help to see all commands")
 
 
-def get_photo(user, cache_file, folder):
+def get_photo(cache_file, folder):
     settings = shelve.open(cache_file)
-    used_pictures = settings.get(cache_used_images_keyword, {})
-    used = used_pictures.get(user.name, [])
 
     photos = get_photos(folder)
 
-    not_sent = [x for x in photos if x not in used]
-    random.shuffle(not_sent)
+    random.shuffle(photos)
 
     if len(photos) == 0:
         return None
-    elif len(not_sent) > 0:
-        used.append(not_sent[0])
-        used_pictures[user.name] = used
-        photo = not_sent[0]
     else:
-        used_pictures[user.name] = [photos[0]]
         photo = photos[0]
-
-    settings[cache_used_images_keyword] = used_pictures
 
     file_names = settings[shelve_filename_keyword]
     if ntpath.basename(photo) in file_names:
