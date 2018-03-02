@@ -32,8 +32,7 @@ class BirbBot:
         print('Reading config from file: {}'.format(self.conf_file))
         config = ConfigObj(self.conf_file)
 
-        self.birbs_folder = config['birbs_folder']
-        self.others_folder = config['other_images_folder']
+        self.images_folder = config['images_folder']
         self.cache_file = config['birbs_cache_file']
         self.birbs_subreddit = config['birbs_subreddit']
 
@@ -44,18 +43,21 @@ class BirbBot:
                                            reddit_conf['reddit_user_agent'],
                                            self.cache_file, shelve_filename_keyword)
 
-        start_new_scraper(self.birbs_subreddit, self.birbs_folder, self.reddit_config)
+        start_new_scraper(self.birbs_subreddit, self.get_image_folder(self.birbs_subreddit), self.reddit_config)
 
         if 'subreddits' in config:
             for subreddit in config['subreddits']:
                 print('Adding scraper for subreddit {} to folder {}'.format(subreddit, config['subreddits'][subreddit]))
-                start_new_scraper(subreddit, '{}/{}/'.format(self.others_folder, config['subreddits'][subreddit]),
+                start_new_scraper(subreddit, self.get_image_folder(config['subreddits'][subreddit]),
                                   self.reddit_config)
 
         print('Starting telegram bot')
         telegram_conf = config['telegram']
         self.start_bot(telegram_conf['telegram_bot_token'])
         print('Telegram bot started')
+
+    def get_image_folder(self, path):
+        return '{}/{}/'.format(self.images_folder, path)
 
     def start_bot(self, bot_token):
         updater = Updater(token=bot_token)
@@ -103,8 +105,8 @@ class BirbBot:
         self.send_birb(bot, update.message.chat_id)
 
     def start_callback(self, bot, update):
-        other_image_folders = set([name for name in os.listdir(self.others_folder)
-                                   if os.path.isdir(os.path.join(self.others_folder, name))])
+        other_image_folders = set([name for name in os.listdir(self.images_folder)
+                                   if os.path.isdir(os.path.join(self.images_folder, name))])
         bot.send_message(chat_id=update.message.chat_id,
                          text='I am the birbs bot, I deliver the birbs.\n'
                               'Type /birb receive a brand new birb from our newest collection of premium birbs!.\n'
@@ -162,8 +164,8 @@ class BirbBot:
                                  text='Unsubscription unsuccessful! You are not subscribed to {}'.format(folder))
 
     def show_help_callback(self, bot, update):
-        other_image_folders = set([name for name in os.listdir(self.others_folder)
-                                   if os.path.isdir(os.path.join(self.others_folder, name))])
+        other_image_folders = set([name for name in os.listdir(self.images_folder)
+                                   if os.path.isdir(os.path.join(self.images_folder, name))])
         bot.send_message(chat_id=update.message.chat_id,
                          text='Type /birb receive a brand new birb from our newest collection of premium birbs!\n' +
                               'Other content is available via the the following commands:\n' +
@@ -178,30 +180,42 @@ class BirbBot:
         # The subreddit is the name of the subreddit to pull the images from. It has to be alphanumeric
         subreddit = re.sub(r'\W+', '', args[0])
 
+        if len(subreddit) == 0:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="This subreddit is invalid!")
+            return
+
         # The handle is the folder and command the images will be accessible over. Also alphanumeric
-        if len(args) > 1:
+        if len(args) > 1 and len(re.sub(r'\W+', '', args[1])) > 0:
             handle = re.sub(r'\W+', '', args[1])
         else:
             handle = subreddit
 
-        if 'subreddits' not in config:
-            config['subreddits'] = {subreddit: handle}
-            config.write()
+        s = Scraper(self.reddit_config,
+                    self.get_image_folder(handle), subreddit)
+
+        if s.sub_exists():
+
+            if 'subreddits' not in config:
+                config['subreddits'] = {subreddit: handle}
+                config.write()
+            else:
+                config['subreddits'][subreddit] = handle
+                config.write()
+
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="Added the new subreddit to scrape, please wait a bit until the download is complete!")
+            s.start()
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="Scraping complete, {} images now available".format(handle))
+
         else:
-            config['subreddits'][subreddit] = handle
-            config.write()
-
-        bot.send_message(chat_id=update.message.chat_id,
-                         text="Added the new subreddit to scrape, please wait a bit until the download is complete!")
-
-        start_new_scraper(subreddit, '{}/{}/'.format(self.others_folder, config['subreddits'][subreddit]),
-                          self.reddit_config)
-
-        bot.send_message(chat_id=update.message.chat_id,
-                         text="Scraping complete, {} images now available".format(handle))
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="This subreddit does not exist!")
+            del s
 
     def unknown_callback(self, bot, update):
-        if self.others_folder != '':
+        if self.images_folder != '':
             command = update.message.text[1:].split('@')[0]
             print('Sending {} to {}'.format(command, update.message.from_user.name))
             self.send_photo(bot, update.message.chat_id, command)
@@ -210,31 +224,26 @@ class BirbBot:
         self.send_photo(bot, chat, 'birb')
 
     def send_photo(self, bot, chat, command):
-        if command == 'birbs' or command == 'birb':
-            photo, title = get_photo(self.cache_file, self.birbs_folder)
-            if photo is None:
+        if command == 'birb':
+            command = 'birbs'
+
+        image_folders = [name for name in os.listdir(self.images_folder)
+                         if os.path.isdir(os.path.join(self.images_folder, name))]
+
+        if command in image_folders:
+            p = get_photo(self.cache_file, self.get_image_folder(command))
+            if p is None:
                 bot.send_message(chat_id=chat,
-                                 text='There are no more birbs in storage! Contact '
-                                      '@LucaMN for more birbs!')
+                                 text='There are no images in storage for the keyword {}'.format(command))
             else:
+                photo, title = p
+                bot.sendChatAction(chat_id=chat, action=telegram.ChatAction.UPLOAD_PHOTO)
                 bot.send_photo(chat_id=chat, photo=open(photo, 'rb'),
                                caption=title)
         else:
-            other_image_folders = [name for name in os.listdir(self.others_folder)
-                                   if os.path.isdir(os.path.join(self.others_folder, name))]
-
-            if command in other_image_folders:
-                photo, title = get_photo(self.cache_file, self.others_folder + '/' + command + '/')
-                if photo is None:
-                    bot.send_message(chat_id=chat,
-                                     text='There are no images in storage for the keyword {}'.format(command))
-                else:
-                    bot.send_photo(chat_id=chat, photo=open(photo, 'rb'),
-                                   caption=title)
-            else:
-                bot.send_message(chat_id=chat,
-                                 text="Sorry, I didn't understand the command {}.\nType /help to see all commands".format(
-                                     command))
+            bot.send_message(chat_id=chat,
+                             text="Sorry, I didn't understand the command {}.\n"
+                                  "Type /help to see all commands".format(command))
 
 
 def get_photo(cache_file, folder):
@@ -260,7 +269,7 @@ def get_photo(cache_file, folder):
 
 
 def get_photos(command):
-    return glob.glob(command + '*.jpg')
+    return glob.glob(command + '*')
 
 
 def start_new_scraper(subreddit, folder, reddit_config):
