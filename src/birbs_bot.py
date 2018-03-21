@@ -107,9 +107,7 @@ class BirbBot:
                     to_remove.append(chat)
                     print("removing chat from subs: {}\nError: {}".format(chat, e))
 
-        for chat in to_remove:
-            config[cache_subs].remove(chat)
-
+        config[cache_subs] = [x for x in config[cache_subs] if x not in to_remove]
         config.write()
 
     def birb_callback(self, bot, update):
