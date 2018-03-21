@@ -7,6 +7,8 @@ from telegram.ext import Updater
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import CommandHandler
+from telegram.error import (TelegramError, Unauthorized, BadRequest,
+                            TimedOut, ChatMigrated, NetworkError)
 import logging
 import glob
 import random
@@ -93,12 +95,22 @@ class BirbBot:
 
     def callback_subs(self, bot, job):
         config = ConfigObj(self.conf_file)
+        to_remove = []
         if cache_subs not in config:
             return
         for chat in config[cache_subs]:
             for folder in config[cache_subs][chat]:
                 print('Sending {} to chat {}'.format(folder, chat))
-                self.send_photo(bot, chat, folder)
+                try:
+                    self.send_photo(bot, chat, folder)
+                except Unauthorized as e:
+                    to_remove.append(chat)
+                    print("removing chat from subs: {}\nError: {}".format(chat, e))
+
+        for chat in to_remove:
+            config[cache_subs].remove(chat)
+
+        config.write()
 
     def birb_callback(self, bot, update):
         print('Sending birb to ' + update.message.from_user.name + ' - ' + update.message.text)
