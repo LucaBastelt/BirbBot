@@ -100,15 +100,15 @@ class BirbBot:
             return
         for chat in config[cache_subs]:
             for folder in config[cache_subs][chat]:
-                print('Sending {} to chat {}'.format(folder, chat))
                 try:
+                    print('Sending {} to chat {}'.format(folder, chat))
                     self.send_photo(bot, chat, folder)
                 except Unauthorized as e:
                     to_remove.append(chat)
-                    print("removing chat from subs: {}\nError: {}".format(chat, e))
+                   # print("removing chat from subs: {}\nError: {}".format(chat, e))
 
-        config[cache_subs] = [x for x in config[cache_subs] if x not in to_remove]
-        config.write()
+       # config[cache_subs] = [x for x in config[cache_subs] if x not in to_remove]
+       # config.write()
 
     def birb_callback(self, bot, update):
         print('Sending birb to ' + update.message.from_user.name + ' - ' + update.message.text)
@@ -146,6 +146,7 @@ class BirbBot:
                 config[cache_subs][chat] = chat_subs
                 config.write()
                 config.reload()
+                print('Subscribtion of {} for chat {}'.format(folder, chat))
                 bot.send_message(chat_id=update.message.chat_id,
                                  text='Subscription successful! Sending an image from {} every hour'.format(folder))
             else:
@@ -155,9 +156,9 @@ class BirbBot:
     def unsubscribe_callback(self, bot, update, args):
         chat = str(update.message.chat_id)
         config = ConfigObj(self.conf_file)
-        if cache_subs not in config:
-            return
-        if chat not in config[cache_subs]:
+        if cache_subs not in config or chat not in config[cache_subs]:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text='Unsubscription unsuccessful! You are not subscribed to anything')
             return
 
         for folder in args:
