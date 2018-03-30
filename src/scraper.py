@@ -89,13 +89,14 @@ class Scraper:
             elif 'i.imgur.com/' in url.url:
                 print(';', end='', flush=True)
                 mo = imgur_url_pattern.search(url.url)
-                imgur_filename = mo.group(2)
-                if '?' in imgur_filename:
-                    imgur_filename = imgur_filename[:imgur_filename.find('?')]
-                file_url = 'http://i.imgur.com/' + imgur_filename
-                ext = imgur_filename[-4:]
-                ext = ext[1:3] if ext[0] == '.' else ext
-                counter = self.download_image(_folder, cache, counter, ext, file_names, file_url, url)
+                if mo is not None:
+                    imgur_filename = mo.group(2)
+                    if '?' in imgur_filename:
+                        imgur_filename = imgur_filename[:imgur_filename.find('?')]
+                    file_url = 'http://i.imgur.com/' + imgur_filename
+                    ext = imgur_filename[-4:]
+                    ext = ext[1:3] if ext[0] == '.' else ext
+                    counter = self.download_image(_folder, cache, counter, ext, file_names, file_url, url)
 
             else:
                 print('-', end='', flush=True)
