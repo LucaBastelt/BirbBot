@@ -1,4 +1,4 @@
-import tinify
+from tinify import tinify, ServerError, ClientError, ConnectionError
 import os
 from configobj import ConfigObj
 
@@ -32,9 +32,17 @@ else:
     try:
         for pair in files:
             print("tinifying file: {} - size before: {} - size after: ".format(pair[1], pair[0]), end='')
-            source = tinify.from_file(pair[1])
-            source.to_file(pair[1])
-            print(os.path.getsize(pair[1]))
 
-    except Exception as e:
-        print("Error while tinifying: {}".format(e))
+            try:
+                source = tinify.from_file(pair[1])
+                source.to_file(pair[1])
+                print(os.path.getsize(pair[1]))
+            except ClientError as er:
+                print("Client Error while tinifying: {}".format(er))
+            except ServerError as er:
+                print("Server Error while tinifying: {}".format(er))
+            except ConnectionError as er:
+                print("Connection Error while tinifying: {}".format(er))
+
+    except tinify.AccountError as e:
+        print("Account Error while tinifying: {}".format(e))
