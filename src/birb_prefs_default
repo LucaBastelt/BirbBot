@@ -2,8 +2,9 @@
 # Github: https://github.com/Zoidster/BirbBot
 
 birbs_subreddit = birbs
-images_folder = ./Others
+images_folder = ./images
 birbs_cache_file = ./birb_cache
+tinify_key = -
 
 # Create a reddit app and put the credentials here
 [reddit]

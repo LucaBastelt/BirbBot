@@ -9,6 +9,7 @@ import schedule
 import shelve
 import time
 from threading import Thread
+import tinify
 
 imgur_url_pattern = re.compile(r'(http://i.imgur.com/(.*))(\?.*)?')
 
@@ -26,7 +27,7 @@ class ScraperConfig:
 
 class Scraper:
 
-    def __init__(self, scraper_config: ScraperConfig, _folder='./Birbs/', _subreddit='birbs'):
+    def __init__(self, scraper_config: ScraperConfig, _folder, _subreddit, _tinify_key='-'):
 
         self.folder = _folder
         self.subreddit = _subreddit
@@ -34,6 +35,7 @@ class Scraper:
         self.reddit = praw.Reddit(client_id=self.scraper_config.client_id,
                                   client_secret=self.scraper_config.client_secret,
                                   user_agent=self.scraper_config.user_agent)
+        tinify.key = _tinify_key
 
     def crawl(self):
 
@@ -115,6 +117,9 @@ class Scraper:
                 handler.write(img)
                 file_names[file_name] = post_name
                 cache[self.scraper_config.shelve_keyword] = file_names
+
+                source = tinify.from_file(path)
+                source.to_file(path)
             counter += 1
         else:
             print('_', end='', flush=True)

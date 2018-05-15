@@ -37,6 +37,7 @@ class BirbBot:
         self.images_folder = config['images_folder']
         self.cache_file = config['birbs_cache_file']
         self.birbs_subreddit = config['birbs_subreddit']
+        self.tinify_key = config["tinify_key"]
 
         reddit_conf = config['reddit']
 
@@ -45,13 +46,13 @@ class BirbBot:
                                            reddit_conf['reddit_user_agent'],
                                            self.cache_file, shelve_filename_keyword)
 
-        start_new_scraper(self.birbs_subreddit, self.get_image_folder(self.birbs_subreddit), self.reddit_config)
+        start_new_scraper(self.birbs_subreddit, self.get_image_folder(self.birbs_subreddit), self.reddit_config, self.tinify_key)
 
         if 'subreddits' in config:
             for subreddit in config['subreddits']:
                 print('Adding scraper for subreddit {} to folder {}'.format(subreddit, config['subreddits'][subreddit]))
                 start_new_scraper(subreddit, self.get_image_folder(config['subreddits'][subreddit]),
-                                  self.reddit_config)
+                                  self.reddit_config, self.tinify_key)
 
         print('Starting telegram bot')
         telegram_conf = config['telegram']
@@ -203,7 +204,7 @@ class BirbBot:
             handle = subreddit
 
         s = Scraper(self.reddit_config,
-                    self.get_image_folder(handle), subreddit)
+                    self.get_image_folder(handle), subreddit, self.tinify_key)
 
         if s.sub_exists():
 
@@ -283,7 +284,7 @@ def get_photos(command):
     return glob.glob(command + '*')
 
 
-def start_new_scraper(subreddit, folder, reddit_config):
+def start_new_scraper(subreddit, folder, reddit_config, tinify_key):
     s = Scraper(reddit_config,
-                folder, subreddit)
+                folder, subreddit, tinify_key)
     s.start()
