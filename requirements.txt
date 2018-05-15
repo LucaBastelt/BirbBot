@@ -4,3 +4,4 @@ configobj
 schedule
 praw
 python-telegram-bot
+tinify
