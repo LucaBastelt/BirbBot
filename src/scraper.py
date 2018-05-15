@@ -118,8 +118,11 @@ class Scraper:
                 file_names[file_name] = post_name
                 cache[self.scraper_config.shelve_keyword] = file_names
 
-                source = tinify.from_file(path)
-                source.to_file(path)
+                try:
+                    source = tinify.from_file(path)
+                    source.to_file(path)
+                except Exception as e:
+                    print("Error while tinifying: {}".format(e))
             counter += 1
         else:
             print('_', end='', flush=True)

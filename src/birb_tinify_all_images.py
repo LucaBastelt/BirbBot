@@ -15,8 +15,13 @@ def tinify_folder(folder):
             tinify_folder(path)
         elif os.path.isfile(path):
             print("tinifying file: {}".format(path))
-            source = tinify.from_file(path)
-            source.to_file(path)
+
+            try:
+                source = tinify.from_file(path)
+                source.to_file(path)
+            except Exception as e:
+                print("Error while tinifying: {}".format(e))
+                return
 
 
 config = ConfigObj(conf_file)
