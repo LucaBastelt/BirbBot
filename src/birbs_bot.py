@@ -92,7 +92,7 @@ class BirbBot:
         updater.start_polling()
 
         j = updater.job_queue
-        j.run_repeating(self.callback_subs, interval=3600, first=0)
+        j.run_repeating(self.callback_subs, interval=3600, first=3600/2)
 
     def callback_subs(self, bot, job):
         config = ConfigObj(self.conf_file)
