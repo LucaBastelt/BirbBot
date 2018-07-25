@@ -9,7 +9,7 @@ import schedule
 import shelve
 import time
 from threading import Thread
-import tinify
+#import tinify
 
 imgur_url_pattern = re.compile(r'(http://i.imgur.com/(.*))(\?.*)?')
 
@@ -35,7 +35,7 @@ class Scraper:
         self.reddit = praw.Reddit(client_id=self.scraper_config.client_id,
                                   client_secret=self.scraper_config.client_secret,
                                   user_agent=self.scraper_config.user_agent)
-        tinify.key = _tinify_key
+        #tinify.key = _tinify_key
 
     def crawl(self):
 
@@ -72,11 +72,7 @@ class Scraper:
 
     def download(self, _url_list, _folder):
         counter = 0
-
-        cache = shelve.open(self.scraper_config.shelve_conf_path)
         file_names = {}
-        if self.scraper_config.shelve_keyword in cache:
-            file_names = cache[self.scraper_config.shelve_keyword]
 
         for url in _url_list:
             ext = url.url[-3:]
@@ -85,11 +81,12 @@ class Scraper:
 
             elif ext == 'jpg' or ext == 'png':
                 file_url = url.url
-                counter = self.download_image(_folder, cache, counter, ext, file_names, file_url, url)
-                print('.', end='', flush=True)
+                counter, file_name, post_name = self.download_image(_folder, counter, ext, file_url, url)
+                if file_name is not None:
+                    file_names[file_name] = post_name
+                    print('.', end='', flush=True)
 
             elif 'i.imgur.com/' in url.url:
-                print(';', end='', flush=True)
                 mo = imgur_url_pattern.search(url.url)
                 if mo is not None:
                     imgur_filename = mo.group(2)
@@ -98,16 +95,24 @@ class Scraper:
                     file_url = 'http://i.imgur.com/' + imgur_filename
                     ext = imgur_filename[-4:]
                     ext = ext[1:3] if ext[0] == '.' else ext
-                    counter = self.download_image(_folder, cache, counter, ext, file_names, file_url, url)
+                    counter, file_name, post_name = self.download_image(_folder, counter, ext, file_url, url)
+                    if file_name is not None:
+                        file_names[file_name] = post_name
+                        print(';', end='', flush=True)
 
             else:
                 print('-', end='', flush=True)
                 continue
 
+        cache = shelve.open(self.scraper_config.shelve_conf_path)
+        if self.scraper_config.shelve_keyword in cache:
+            file_names = dict(cache[self.scraper_config.shelve_keyword], **file_names)
+        cache[self.scraper_config.shelve_keyword] = file_names
         cache.close()
         return counter
 
-    def download_image(self, _folder, cache, counter, ext, file_names, file_url, url, index=-1):
+    @staticmethod
+    def download_image(_folder, counter, ext, file_url, url, index=-1):
         post_name = url.title
         file_name = url.id + ('_' + str(index) if index != -1 else '') + '.' + ext
         path = _folder + file_name
@@ -115,18 +120,19 @@ class Scraper:
             img = requests.get(file_url).content
             with open(path, 'wb') as handler:
                 handler.write(img)
-                file_names[file_name] = post_name
-                cache[self.scraper_config.shelve_keyword] = file_names
+                #file_names[file_name] = post_name
+                #cache[self.scraper_config.shelve_keyword] = file_names
 
-                try:
-                    source = tinify.from_file(path)
-                    source.to_file(path)
-                except Exception as e:
-                    print("Error while tinifying: {}".format(e))
-            counter += 1
+                # try:
+                #    source = tinify.from_file(path)
+                #    source.to_file(path)
+                # except Exception as e:
+                #    print("Error while tinifying: {}".format(e))
+                counter += 1
+                return counter, file_name, post_name
         else:
             print('_', end='', flush=True)
-        return counter
+        return counter, None, None
 
     def sub_exists(self, sub=None):
         if sub is None:

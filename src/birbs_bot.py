@@ -108,8 +108,8 @@ class BirbBot:
                     to_remove.append(chat)
                    # print("removing chat from subs: {}\nError: {}".format(chat, e))
 
-       # config[cache_subs] = [x for x in config[cache_subs] if x not in to_remove]
-       # config.write()
+        # config[cache_subs] = [x for x in config[cache_subs] if x not in to_remove]
+        # config.write()
 
     def birb_callback(self, bot, update):
         print('Sending birb to ' + update.message.from_user.name + ' - ' + update.message.text)
@@ -189,6 +189,11 @@ class BirbBot:
     def add_callback(self, bot, update, args):
         config = ConfigObj(self.conf_file)
 
+        # Extreme TODO move this to the config file
+
+        if update.message.from_user.name != '@LucaMN':
+            return
+
         # The subreddit is the name of the subreddit to pull the images from. It has to be alphanumeric
         subreddit = re.sub(r'\W+', '', args[0])
 
@@ -207,7 +212,6 @@ class BirbBot:
                     self.get_image_folder(handle), subreddit, self.tinify_key)
 
         if s.sub_exists():
-
             if 'subreddits' not in config:
                 config['subreddits'] = {subreddit: handle}
                 config.write()
