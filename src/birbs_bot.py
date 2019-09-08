@@ -201,7 +201,7 @@ class BirbBot:
             subreddit = self.birbs_subreddit
 
         if self.scraper.sub_exists(subreddit):
-            url, title, send_as_url = self.scraper.get_random_url_from_sub(subreddit)
+            url, title, send_as_url, permalink = self.scraper.get_random_url_from_sub(subreddit)
 
             if url is None:
                 bot.send_message(chat_id=chat,
@@ -209,15 +209,19 @@ class BirbBot:
             else:
 
                 try:
+                    message = f"[{title}](https://reddit.com{permalink})"
+                    print(message)
                     if not send_as_url:
                         bot.sendChatAction(chat_id=chat, action=telegram.ChatAction.UPLOAD_PHOTO)
-                        bot.send_photo(chat_id=chat, photo=url,
-                                       caption=f"[{title}](https://reddit.com/{subreddit})",
-                                       parse_mode=telegram.ParseMode.MARKDOWN)
+                        bot.send_photo(chat_id=chat, photo=url)
+                        bot.send_message(chat_id=chat, text=message,
+                                         parse_mode=telegram.ParseMode.MARKDOWN,
+                                         disable_web_page_preview=True)
                     else:
                         bot.send_message(chat_id=chat, text=url)
-                        bot.send_message(chat_id=chat, text=f"[{title}](https://reddit.com/{subreddit})",
-                                         parse_mode=telegram.ParseMode.MARKDOWN)
+                        bot.send_message(chat_id=chat, text=message,
+                                         parse_mode=telegram.ParseMode.MARKDOWN,
+                                         disable_web_page_preview=True)
                 except:
                     bot.send_message(chat_id=chat,
                                      text=f"Internal error, please try again <3")

@@ -62,6 +62,6 @@ class Scraper:
         ext = post.url[-3:]
 
         if ext == 'jpg' or ext == 'png':
-            return post.url, post.title, False
+            return post.url, post.title, False, post.permalink
         else:
-            return None if not url_is_okay else (post.url, post.title, True)
+            return None if not url_is_okay else (post.url, post.title, True, post.permalink)
