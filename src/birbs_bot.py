@@ -92,10 +92,10 @@ class BirbBot:
     def start_callback(self, bot, update):
         config = ConfigObj(self.conf_file)
         bot.send_message(chat_id=update.message.chat_id,
-                         text=f'I am the birbs bot, I deliver the birbs.\n'
-                              f'Type /birb receive a brand new birb from our newest collection of premium birbs!.\n'
-                              f'Other content is available via the the following commands:\n'
-                              f'{", ".join(config[cache_subreddits])}\n'
+                         text=f'I am the birbs bot, I deliver the birbs.\n'\
+                              f'Type /birb receive a brand new birb from our newest collection of premium birbs!.\n'\
+                              f'Other content is available via the the following commands:\n'\
+                              f'{", ".join(config[cache_subreddits])}\n'\
                               f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
 
     def subscribe_callback(self, bot, update, args):
@@ -149,10 +149,10 @@ class BirbBot:
     def show_help(self, bot, update):
         config = ConfigObj(self.conf_file)
         bot.send_message(chat_id=update.message.chat_id,
-                         text=f'Type /birb receive a brand new birb from our newest collection of premium birbs!\n'
-                              f'Other content is available via the the following commands:\n'
-                              f'{", ".join(config[cache_subreddits])}\n'
-                              f'Use the subscribe command with any amount of arguments to get hourly images\n'
+                         text=f'Type /birb receive a brand new birb from our newest collection of premium birbs!\n'\
+                              f'Other content is available via the the following commands:\n'\
+                              f'{", ".join(config[cache_subreddits])}\n'\
+                              f'Use the subscribe command with any amount of arguments to get hourly images\n'\
                               f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
 
     def add_subreddit(self, bot, update, args):
