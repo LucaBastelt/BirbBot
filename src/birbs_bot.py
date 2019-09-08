@@ -215,11 +215,10 @@ class BirbBot:
                                        caption=title)
                     else:
                         bot.send_message(chat_id=chat, text=url)
-                        bot.send_message(chat_id=chat, text=title)
+                        bot.send_message(chat_id=chat, text=f"[title](https://reddit.com/{subreddit})")
                 except:
                     bot.send_message(chat_id=chat,
-                                     text="Internal error, please try again <3".format(subreddit))
+                                     text=f"Internal error, please try again <3")
         else:
             bot.send_message(chat_id=chat,
-                             text="Sorry, the command {} is not valid.\n"
-                                  "Type /help to see all commands".format(subreddit))
+                             text=f"Sorry, the command {subreddit} is not valid.\n Type /help to see all commands")
