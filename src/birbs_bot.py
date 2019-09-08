@@ -158,11 +158,6 @@ class BirbBot:
     def add_subreddit(self, bot, update, args):
         config = ConfigObj(self.conf_file)
 
-        # Extreme TODO move this to the config file
-
-        if update is not None and update.message.from_user.name != '@LucaMN':
-            return
-
         # The subreddit is the name of the subreddit to pull the images from. It has to be alphanumeric
         subreddit = re.sub(r'\W+', '', args[0] if isinstance(args, list) else args)
 
@@ -205,8 +200,7 @@ class BirbBot:
         if subreddit == 'birb':
             subreddit = self.birbs_subreddit
 
-        config = ConfigObj(self.conf_file)
-        if cache_subreddits in config and subreddit in config[cache_subreddits]:
+        if self.scraper.sub_exists(subreddit):
             url, title, send_as_url = self.scraper.get_random_url_from_sub(subreddit)
 
             if url is None:
