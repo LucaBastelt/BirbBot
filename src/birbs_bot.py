@@ -212,10 +212,12 @@ class BirbBot:
                     if not send_as_url:
                         bot.sendChatAction(chat_id=chat, action=telegram.ChatAction.UPLOAD_PHOTO)
                         bot.send_photo(chat_id=chat, photo=url,
-                                       caption=f"[title](https://reddit.com/{subreddit})")
+                                       caption=f"[{title}](https://reddit.com/{subreddit})",
+                                       parse_mode=telegram.ParseMode.MARKDOWN)
                     else:
                         bot.send_message(chat_id=chat, text=url)
-                        bot.send_message(chat_id=chat, text=f"[title](https://reddit.com/{subreddit})")
+                        bot.send_message(chat_id=chat, text=f"[{title}](https://reddit.com/{subreddit})",
+                                         parse_mode=telegram.ParseMode.MARKDOWN)
                 except:
                     bot.send_message(chat_id=chat,
                                      text=f"Internal error, please try again <3")
