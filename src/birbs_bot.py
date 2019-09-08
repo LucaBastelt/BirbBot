@@ -208,13 +208,17 @@ class BirbBot:
                                  text='There are no images for the keyword {}'.format(subreddit))
             else:
 
-                if not send_as_url:
-                    bot.sendChatAction(chat_id=chat, action=telegram.ChatAction.UPLOAD_PHOTO)
-                    bot.send_photo(chat_id=chat, photo=url,
-                                   caption=title)
-                else:
-                    bot.send_message(chat_id=chat, text=url)
-                    bot.send_message(chat_id=chat, text=title)
+                try:
+                    if not send_as_url:
+                        bot.sendChatAction(chat_id=chat, action=telegram.ChatAction.UPLOAD_PHOTO)
+                        bot.send_photo(chat_id=chat, photo=url,
+                                       caption=title)
+                    else:
+                        bot.send_message(chat_id=chat, text=url)
+                        bot.send_message(chat_id=chat, text=title)
+                except:
+                    bot.send_message(chat_id=chat,
+                                     text="Internal error, please try again <3".format(subreddit))
         else:
             bot.send_message(chat_id=chat,
                              text="Sorry, the command {} is not valid.\n"
