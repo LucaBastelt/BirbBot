@@ -2,9 +2,7 @@
 # Github: https://github.com/Zoidster/BirbBot
 
 birbs_subreddit = birbs
-images_folder = ./images
-birbs_cache_file = ./birb_cache
-tinify_key = -
+subreddits = birbs,
 
 # Create a reddit app and put the credentials here
 [reddit]
@@ -15,3 +13,5 @@ tinify_key = -
 # Create a telegram bot using @BotFather and put the generated token here
 [telegram]
     telegram_bot_token = XXXXXXXXXXXXXXXXXXXXX
+
+[subs]

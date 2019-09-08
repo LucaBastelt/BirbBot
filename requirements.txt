@@ -5,3 +5,4 @@ schedule
 praw
 python-telegram-bot
 tinify
+python-telegram-bot

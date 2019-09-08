@@ -2,26 +2,21 @@
 # The birbs telegram bot
 # Github: https://github.com/Zoidster/BirbBot
 
+import logging
+import re
+
 import telegram.ext
-from telegram.ext import Updater
+from configobj import ConfigObj
+from telegram.error import (Unauthorized)
+from telegram.ext import CommandHandler
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
-from telegram.ext import CommandHandler
-from telegram.error import (TelegramError, Unauthorized, BadRequest,
-                            TimedOut, ChatMigrated, NetworkError)
-import logging
-import glob
-import random
-import ntpath
-import os
-import re
-import shelve
-from configobj import ConfigObj
+from telegram.ext import Updater
 
 from scraper import Scraper, ScraperConfig
 
-shelve_filename_keyword = 'filename_hashes'
-cache_subs = 'subs'
+cache_subscriptions = 'subs'
+cache_subreddits = 'subreddits'
 
 
 # Using ConfigObj
@@ -34,33 +29,22 @@ class BirbBot:
         print('Reading config from file: {}'.format(self.conf_file))
         config = ConfigObj(self.conf_file)
 
-        self.images_folder = config['images_folder']
-        self.cache_file = config['birbs_cache_file']
         self.birbs_subreddit = config['birbs_subreddit']
-        self.tinify_key = config["tinify_key"]
 
         reddit_conf = config['reddit']
 
         self.reddit_config = ScraperConfig(reddit_conf['reddit_client_id'],
                                            reddit_conf['reddit_client_secret'],
-                                           reddit_conf['reddit_user_agent'],
-                                           self.cache_file, shelve_filename_keyword)
+                                           reddit_conf['reddit_user_agent'])
 
-        start_new_scraper(self.birbs_subreddit, self.get_image_folder(self.birbs_subreddit), self.reddit_config, self.tinify_key)
+        self.scraper = Scraper(self.reddit_config)
 
-        if 'subreddits' in config:
-            for subreddit in config['subreddits']:
-                print('Adding scraper for subreddit {} to folder {}'.format(subreddit, config['subreddits'][subreddit]))
-                start_new_scraper(subreddit, self.get_image_folder(config['subreddits'][subreddit]),
-                                  self.reddit_config, self.tinify_key)
+        self.add_subreddit(None, None, self.birbs_subreddit)
 
         print('Starting telegram bot')
         telegram_conf = config['telegram']
         self.start_bot(telegram_conf['telegram_bot_token'])
         print('Telegram bot started')
-
-    def get_image_folder(self, path):
-        return '{}/{}/'.format(self.images_folder, path)
 
     def start_bot(self, bot_token):
         updater = Updater(token=bot_token)
@@ -68,227 +52,176 @@ class BirbBot:
         dispatcher = updater.dispatcher
         logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-        start_handler = CommandHandler('start', self.start_callback)
-        dispatcher.add_handler(start_handler)
-
-        birb_handler = CommandHandler('birb', self.birb_callback)
-        dispatcher.add_handler(birb_handler)
-
-        subscribe_handler = CommandHandler('subscribe', self.subscribe_callback, pass_args=True)
-        dispatcher.add_handler(subscribe_handler)
-
-        unsubscribe_handler = CommandHandler('unsubscribe', self.unsubscribe_callback, pass_args=True)
-        dispatcher.add_handler(unsubscribe_handler)
-
-        help_handler = CommandHandler('help', self.show_help_callback)
-        dispatcher.add_handler(help_handler)
-
-        add_handler = CommandHandler('add', self.add_callback, pass_args=True)
-        dispatcher.add_handler(add_handler)
-
-        unknown_handler = MessageHandler(Filters.command, self.unknown_callback)
-        dispatcher.add_handler(unknown_handler)
+        dispatcher.add_handler(CommandHandler('start', self.start_callback))
+        dispatcher.add_handler(CommandHandler('birb', self.birb_callback))
+        dispatcher.add_handler(CommandHandler('subscribe', self.subscribe_callback, pass_args=True))
+        dispatcher.add_handler(CommandHandler('unsubscribe', self.unsubscribe, pass_args=True))
+        dispatcher.add_handler(CommandHandler('help', self.show_help))
+        dispatcher.add_handler(CommandHandler('add', self.add_subreddit, pass_args=True))
+        dispatcher.add_handler(MessageHandler(Filters.command, self.unknown_callback))
 
         updater.start_polling()
 
         j = updater.job_queue
-        j.run_repeating(self.callback_subs, interval=3600, first=3600/2)
+        j.run_repeating(self.send_subs, interval=3600, first=600)
 
-    def callback_subs(self, bot, job):
+    def send_subs(self, bot, job):
         config = ConfigObj(self.conf_file)
         to_remove = []
-        if cache_subs not in config:
+        if cache_subscriptions not in config:
             return
-        for chat in config[cache_subs]:
-            for folder in config[cache_subs][chat]:
+        for chat in config[cache_subscriptions]:
+            for subreddit in config[cache_subscriptions][chat]:
                 try:
-                    print('Sending {} to chat {}'.format(folder, chat))
-                    self.send_photo(bot, chat, folder)
+                    print('Sending {} to chat {}'.format(subreddit, chat))
+                    self.send_photo(bot, chat, subreddit)
                 except Unauthorized as e:
                     to_remove.append(chat)
-                   # print("removing chat from subs: {}\nError: {}".format(chat, e))
+                    print("removing chat from subs: {}\nError: {}".format(chat, e))
+                except Exception as e:
+                    to_remove.append(chat)
+                    print("removing chat from subs: {}\nError: {}".format(chat, e))
 
-        # config[cache_subs] = [x for x in config[cache_subs] if x not in to_remove]
-        # config.write()
+        #config[cache_subscriptions] = [x for x in config[cache_subscriptions] if x not in to_remove]
+        #config.write()
 
     def birb_callback(self, bot, update):
         print('Sending birb to ' + update.message.from_user.name + ' - ' + update.message.text)
-        self.send_birb(bot, update.message.chat_id)
+        self.send_photo(bot, update.message.chat_id, 'birb')
 
     def start_callback(self, bot, update):
-        other_image_folders = set([name for name in os.listdir(self.images_folder)
-                                   if os.path.isdir(os.path.join(self.images_folder, name))])
+        config = ConfigObj(self.conf_file)
         bot.send_message(chat_id=update.message.chat_id,
-                         text='I am the birbs bot, I deliver the birbs.\n'
-                              'Type /birb receive a brand new birb from our newest collection of premium birbs!.\n'
-                              'Other content is available via the the following commands:\n' +
-                              ', '.join(other_image_folders) + '\n' +
-                              'Code located at https://github.com/Zoidster/BirbBot\n'
-                              'Author: @LucaMN')
+                         text=f'I am the birbs bot, I deliver the birbs.\n'
+                              f'Type /birb receive a brand new birb from our newest collection of premium birbs!.\n'
+                              f'Other content is available via the the following commands:\n'
+                              f'{", ".join(config[cache_subreddits])}\n'
+                              f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
 
     def subscribe_callback(self, bot, update, args):
         if len(args) == 0:
-            args = ['birbs']
+            args = [self.birbs_subreddit]
         chat = str(update.message.chat_id)
         config = ConfigObj(self.conf_file)
-        if cache_subs not in config:
-            config[cache_subs] = {}
+        if cache_subscriptions not in config:
+            config[cache_subscriptions] = {}
             config.write()
             config.reload()
-        if chat not in config[cache_subs]:
-            config[cache_subs][chat] = []
+        if chat not in config[cache_subscriptions]:
+            config[cache_subscriptions][chat] = []
             config.write()
             config.reload()
 
-        for folder in args:
-            if folder not in config[cache_subs][chat]:
-                chat_subs = config[cache_subs][chat]
-                chat_subs.append(folder)
-                config[cache_subs][chat] = chat_subs
+        for subreddit in args:
+            if subreddit not in config[cache_subscriptions][chat]:
+                chat_subs = config[cache_subscriptions][chat]
+                chat_subs.append(subreddit)
                 config.write()
                 config.reload()
-                print('Subscribtion of {} for chat {}'.format(folder, chat))
+                print(f'Subscribtion of {subreddit} for chat {chat}')
                 bot.send_message(chat_id=update.message.chat_id,
-                                 text='Subscription successful! Sending an image from {} every hour'.format(folder))
+                                 text=f'Subscription successful! Sending an image from {subreddit} every hour')
             else:
                 bot.send_message(chat_id=update.message.chat_id,
-                                 text='You are already subscribed to that!')
+                                 text=f'You are already subscribed to {subreddit}!')
 
-    def unsubscribe_callback(self, bot, update, args):
+    def unsubscribe(self, bot, update, args):
         chat = str(update.message.chat_id)
         config = ConfigObj(self.conf_file)
-        if cache_subs not in config or chat not in config[cache_subs]:
+        if cache_subscriptions not in config or chat not in config[cache_subscriptions]:
             bot.send_message(chat_id=update.message.chat_id,
                              text='Unsubscription unsuccessful! You are not subscribed to anything')
             return
 
         for folder in args:
-            if folder in config[cache_subs][chat]:
-                chat_subs = config[cache_subs][chat]
+            if folder in config[cache_subscriptions][chat]:
+                chat_subs = config[cache_subscriptions][chat]
                 chat_subs.remove(folder)
-                config[cache_subs][chat] = chat_subs
+                config[cache_subscriptions][chat] = chat_subs
                 config.write()
                 config.reload()
                 bot.send_message(chat_id=update.message.chat_id,
-                                 text='Unsubscription successful! Not sending images from {} anymore'.format(folder))
+                                 text=f'Unsubscription successful! Not sending images from {folder} anymore')
             else:
                 bot.send_message(chat_id=update.message.chat_id,
-                                 text='Unsubscription unsuccessful! You are not subscribed to {}'.format(folder))
+                                 text=f'Unsubscription unsuccessful! You are not subscribed to {folder}')
 
-    def show_help_callback(self, bot, update):
-        other_image_folders = set([name for name in os.listdir(self.images_folder)
-                                   if os.path.isdir(os.path.join(self.images_folder, name))])
+    def show_help(self, bot, update):
+        config = ConfigObj(self.conf_file)
         bot.send_message(chat_id=update.message.chat_id,
-                         text='Type /birb receive a brand new birb from our newest collection of premium birbs!\n' +
-                              'Other content is available via the the following commands:\n' +
-                              ', '.join(other_image_folders) + '\n' +
-                              'Use the subscribe command with any amount of arguments to get hourly images\n'
-                              'Code located at https://github.com/Zoidster/BirbBot\n'
-                              'Author: @LucaMN')
+                         text=f'Type /birb receive a brand new birb from our newest collection of premium birbs!\n'
+                              f'Other content is available via the the following commands:\n'
+                              f'{", ".join(config[cache_subreddits])}\n'
+                              f'Use the subscribe command with any amount of arguments to get hourly images\n'
+                              f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
 
-    def add_callback(self, bot, update, args):
+    def add_subreddit(self, bot, update, args):
         config = ConfigObj(self.conf_file)
 
         # Extreme TODO move this to the config file
 
-        if update.message.from_user.name != '@LucaMN':
+        if update is not None and update.message.from_user.name != '@LucaMN':
             return
 
         # The subreddit is the name of the subreddit to pull the images from. It has to be alphanumeric
-        subreddit = re.sub(r'\W+', '', args[0])
+        subreddit = re.sub(r'\W+', '', args[0] if isinstance(args, list) else args)
 
         if len(subreddit) == 0:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="This subreddit is invalid!")
+            if bot is not None:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text=f"This subreddit {subreddit} is invalid!")
             return
 
-        # The handle is the folder and command the images will be accessible over. Also alphanumeric
-        if len(args) > 1 and len(re.sub(r'\W+', '', args[1])) > 0:
-            handle = re.sub(r'\W+', '', args[1])
-        else:
-            handle = subreddit
-
-        s = Scraper(self.reddit_config,
-                    self.get_image_folder(handle), subreddit, self.tinify_key)
-
-        if s.sub_exists():
-            if 'subreddits' not in config:
-                config['subreddits'] = {subreddit: handle}
+        if self.scraper.sub_exists(subreddit):
+            if cache_subreddits not in config:
+                config[cache_subreddits] = [subreddit]
                 config.write()
+                if bot is not None:
+                    bot.send_message(chat_id=update.message.chat_id,
+                                     text=f"Subreddit added, {subreddit} images now available")
+            elif subreddit in config[cache_subreddits]:
+                if bot is not None:
+                    bot.send_message(chat_id=update.message.chat_id,
+                                     text="This subreddit has already been added!")
             else:
-                config['subreddits'][subreddit] = handle
+                config[cache_subreddits].append(subreddit)
                 config.write()
 
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="Added the new subreddit to scrape, please wait a bit until the download is complete!")
-            s.start()
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="Scraping complete, {} images now available".format(handle))
+                if bot is not None:
+                    bot.send_message(chat_id=update.message.chat_id,
+                                     text=f"Subreddit added, {subreddit} images now available")
 
         else:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="This subreddit does not exist!")
-            del s
+            if bot is not None:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="This subreddit does not exist!")
 
     def unknown_callback(self, bot, update):
-        if self.images_folder != '':
-            command = update.message.text[1:].split('@')[0]
-            print('Sending {} to {}'.format(command, update.message.from_user.name))
-            self.send_photo(bot, update.message.chat_id, command)
+        command = update.message.text[1:].split('@')[0]
+        print('Sending {} to {}'.format(command, update.message.from_user.name))
+        self.send_photo(bot, update.message.chat_id, command)
 
-    def send_birb(self, bot, chat):
-        self.send_photo(bot, chat, 'birb')
+    def send_photo(self, bot, chat, subreddit):
+        if subreddit == 'birb':
+            subreddit = self.birbs_subreddit
 
-    def send_photo(self, bot, chat, command):
-        if command == 'birb':
-            command = 'birbs'
+        config = ConfigObj(self.conf_file)
+        if cache_subreddits in config and subreddit in config[cache_subreddits]:
+            url, title, send_as_url = self.scraper.get_random_url_from_sub(subreddit)
 
-        image_folders = [name for name in os.listdir(self.images_folder)
-                         if os.path.isdir(os.path.join(self.images_folder, name))]
-
-        if command in image_folders:
-            p = get_photo(self.cache_file, self.get_image_folder(command))
-            if p is None:
+            if url is None:
                 bot.send_message(chat_id=chat,
-                                 text='There are no images in storage for the keyword {}'.format(command))
+                                 text='There are no images for the keyword {}'.format(subreddit))
             else:
-                photo, title = p
-                bot.sendChatAction(chat_id=chat, action=telegram.ChatAction.UPLOAD_PHOTO)
-                bot.send_photo(chat_id=chat, photo=open(photo, 'rb'),
-                               caption=title)
+
+                if not send_as_url:
+                    bot.sendChatAction(chat_id=chat, action=telegram.ChatAction.UPLOAD_PHOTO)
+                    bot.send_photo(chat_id=chat, photo=url,
+                                   caption=title)
+                else:
+                    bot.send_message(chat_id=chat, text=url)
+                    bot.send_message(chat_id=chat, text=title)
         else:
             bot.send_message(chat_id=chat,
-                             text="Sorry, I didn't understand the command {}.\n"
-                                  "Type /help to see all commands".format(command))
-
-
-def get_photo(cache_file, folder):
-    settings = shelve.open(cache_file)
-
-    photos = get_photos(folder)
-
-    random.shuffle(photos)
-
-    if len(photos) == 0:
-        return None
-    else:
-        photo = photos[0]
-
-    file_names = settings[shelve_filename_keyword]
-    if ntpath.basename(photo) in file_names:
-        title = file_names[ntpath.basename(photo)]
-    else:
-        title = os.path.splitext(ntpath.basename(photo))[0]
-
-    settings.close()
-    return photo, title
-
-
-def get_photos(command):
-    return glob.glob(command + '*')
-
-
-def start_new_scraper(subreddit, folder, reddit_config, tinify_key):
-    s = Scraper(reddit_config,
-                folder, subreddit, tinify_key)
-    s.start()
+                             text="Sorry, the command {} is not valid.\n"
+                                  "Type /help to see all commands".format(subreddit))
