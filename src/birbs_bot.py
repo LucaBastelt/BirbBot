@@ -54,7 +54,7 @@ class BirbBot:
 
         dispatcher.add_handler(CommandHandler('start', self.start_callback))
         dispatcher.add_handler(CommandHandler('birb', self.birb_callback))
-        dispatcher.add_handler(CommandHandler('subscribe', self.subscribe_callback, pass_args=True))
+        dispatcher.add_handler(CommandHandler('subscribe', self.subscribe, pass_args=True))
         dispatcher.add_handler(CommandHandler('unsubscribe', self.unsubscribe, pass_args=True))
         dispatcher.add_handler(CommandHandler('help', self.show_help))
         dispatcher.add_handler(CommandHandler('add', self.add_subreddit, pass_args=True))
@@ -98,7 +98,7 @@ class BirbBot:
                               f'{", ".join(config[cache_subreddits])}\n'\
                               f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
 
-    def subscribe_callback(self, bot, update, args):
+    def subscribe(self, bot, update, args):
         if len(args) == 0:
             args = [self.birbs_subreddit]
         chat = str(update.message.chat_id)
@@ -209,17 +209,18 @@ class BirbBot:
             else:
 
                 try:
-                    message = f"[{title}](https://reddit.com{permalink})"
-                    print(message)
+                    link = f"[Link](https://reddit.com{permalink})"
+                    print(link)
                     if not send_as_url:
                         bot.sendChatAction(chat_id=chat, action=telegram.ChatAction.UPLOAD_PHOTO)
-                        bot.send_photo(chat_id=chat, photo=url)
-                        bot.send_message(chat_id=chat, text=message,
+                        bot.send_photo(chat_id=chat, photo=url, caption=title)
+                        bot.send_message(chat_id=chat, text=link,
                                          parse_mode=telegram.ParseMode.MARKDOWN,
                                          disable_web_page_preview=True)
                     else:
                         bot.send_message(chat_id=chat, text=url)
-                        bot.send_message(chat_id=chat, text=message,
+                        bot.send_message(chat_id=chat, text=title)
+                        bot.send_message(chat_id=chat, text=link,
                                          parse_mode=telegram.ParseMode.MARKDOWN,
                                          disable_web_page_preview=True)
                 except:
