@@ -39,8 +39,6 @@ class BirbBot:
 
         self.scraper = Scraper(self.reddit_config)
 
-        self.add_subreddit(None, None, self.birbs_subreddit)
-
         print('Starting telegram bot')
         telegram_conf = config['telegram']
         self.start_bot(telegram_conf['telegram_bot_token'])
@@ -57,7 +55,6 @@ class BirbBot:
         dispatcher.add_handler(CommandHandler('subscribe', self.subscribe, pass_args=True))
         dispatcher.add_handler(CommandHandler('unsubscribe', self.unsubscribe, pass_args=True))
         dispatcher.add_handler(CommandHandler('help', self.show_help))
-        dispatcher.add_handler(CommandHandler('add', self.add_subreddit, pass_args=True))
         dispatcher.add_handler(MessageHandler(Filters.command, self.unknown_callback))
 
         updater.start_polling()
@@ -154,42 +151,6 @@ class BirbBot:
                               f'{", ".join(config[cache_subreddits])}\n'\
                               f'Use the subscribe command with any amount of arguments to get hourly images\n'\
                               f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
-
-    def add_subreddit(self, bot, update, args):
-        config = ConfigObj(self.conf_file)
-
-        # The subreddit is the name of the subreddit to pull the images from. It has to be alphanumeric
-        subreddit = re.sub(r'\W+', '', args[0] if isinstance(args, list) else args)
-
-        if len(subreddit) == 0:
-            if bot is not None:
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text=f"This subreddit {subreddit} is invalid!")
-            return
-
-        if self.scraper.sub_exists(subreddit):
-            if cache_subreddits not in config:
-                config[cache_subreddits] = [subreddit]
-                config.write()
-                if bot is not None:
-                    bot.send_message(chat_id=update.message.chat_id,
-                                     text=f"Subreddit added, {subreddit} images now available")
-            elif subreddit in config[cache_subreddits]:
-                if bot is not None:
-                    bot.send_message(chat_id=update.message.chat_id,
-                                     text="This subreddit has already been added!")
-            else:
-                config[cache_subreddits].append(subreddit)
-                config.write()
-
-                if bot is not None:
-                    bot.send_message(chat_id=update.message.chat_id,
-                                     text=f"Subreddit added, {subreddit} images now available")
-
-        else:
-            if bot is not None:
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text="This subreddit does not exist!")
 
     def unknown_callback(self, bot, update):
         command = update.message.text[1:].split('@')[0]
