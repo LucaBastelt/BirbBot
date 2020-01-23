@@ -155,8 +155,10 @@ class BirbBot:
                               f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
 
     def insult(self, bot, update):
+        insult = get_insult()
+        print('Sending insult to ' + update.message.from_user.name + ' - ' + insult)
         bot.send_message(chat_id=update.message.chat_id,
-                         text=f'{get_insult()}')
+                         text=f'{insult}')
 
     def unknown_callback(self, bot, update):
         command = update.message.text[1:].split('@')[0]
