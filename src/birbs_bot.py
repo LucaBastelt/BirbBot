@@ -3,7 +3,6 @@
 # Github: https://github.com/Zoidster/BirbBot
 
 import logging
-import re
 
 import telegram.ext
 from configobj import ConfigObj
@@ -14,6 +13,7 @@ from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
 from scraper import Scraper, ScraperConfig
+from insults import get_insult
 
 cache_subscriptions = 'subs'
 cache_subreddits = 'subreddits'
@@ -55,6 +55,8 @@ class BirbBot:
         dispatcher.add_handler(CommandHandler('subscribe', self.subscribe, pass_args=True))
         dispatcher.add_handler(CommandHandler('unsubscribe', self.unsubscribe, pass_args=True))
         dispatcher.add_handler(CommandHandler('help', self.show_help))
+        dispatcher.add_handler(CommandHandler('1839', self.insult))
+        dispatcher.add_handler(CommandHandler('beleidigung', self.insult))
         dispatcher.add_handler(MessageHandler(Filters.command, self.unknown_callback))
 
         updater.start_polling()
@@ -151,6 +153,10 @@ class BirbBot:
                               f'{", ".join(config[cache_subreddits])}\n'\
                               f'Use the subscribe command with any amount of arguments to get hourly images\n'\
                               f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
+
+    def insult(self, bot, update):
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=f'{get_insult()}')
 
     def unknown_callback(self, bot, update):
         command = update.message.text[1:].split('@')[0]
