@@ -1,2 +1,6 @@
 Du {{}}!
 {{}}!
+Du {{}}, du!
+Ich sehe hier einen {{}}!
+Sie sind ein elender {{}}!
+Gebt Acht, ein {{}}!
