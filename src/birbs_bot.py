@@ -100,7 +100,7 @@ class BirbBot:
 
     def subscribe(self, update: Update, context: CallbackContext):
         if len(context.args) == 0:
-            args = [self.birbs_subreddit]
+            context.args = [self.birbs_subreddit]
         chat = str(update.message.chat_id)
         config = ConfigObj(self.conf_file)
         if cache_subscriptions not in config:
@@ -112,7 +112,7 @@ class BirbBot:
             config.write()
             config.reload()
 
-        for subreddit in args:
+        for subreddit in context.args:
             if subreddit not in config[cache_subscriptions][chat]:
                 chat_subs = config[cache_subscriptions][chat]
                 chat_subs.append(subreddit)
