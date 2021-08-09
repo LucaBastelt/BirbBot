@@ -6,8 +6,9 @@ import logging
 
 import telegram.ext
 from configobj import ConfigObj
+from telegram import Update
 from telegram.error import (Unauthorized)
-from telegram.ext import CommandHandler
+from telegram.ext import CommandHandler, CallbackContext
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
@@ -45,7 +46,7 @@ class BirbBot:
         print('Telegram bot started')
 
     def start_bot(self, bot_token):
-        updater = Updater(token=bot_token)
+        updater = Updater(token=bot_token, use_context=True)
 
         dispatcher = updater.dispatcher
         logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -64,7 +65,7 @@ class BirbBot:
         j = updater.job_queue
         j.run_repeating(self.send_subs, interval=3600, first=600)
 
-    def send_subs(self, bot, job):
+    def send_subs(self, context: CallbackContext):
         config = ConfigObj(self.conf_file)
         to_remove = []
         if cache_subscriptions not in config:
@@ -73,7 +74,7 @@ class BirbBot:
             for subreddit in config[cache_subscriptions][chat]:
                 try:
                     print('Sending {} to chat {}'.format(subreddit, chat))
-                    self.send_photo(bot, chat, subreddit)
+                    self.send_photo(context.bot, chat, subreddit)
                 except Unauthorized as e:
                     to_remove.append(chat)
                     print("removing chat from subs: {}\nError: {}".format(chat, e))
@@ -81,24 +82,24 @@ class BirbBot:
                     to_remove.append(chat)
                     print("removing chat from subs: {}\nError: {}".format(chat, e))
 
-        #config[cache_subscriptions] = [x for x in config[cache_subscriptions] if x not in to_remove]
-        #config.write()
+        # config[cache_subscriptions] = [x for x in config[cache_subscriptions] if x not in to_remove]
+        # config.write()
 
-    def birb_callback(self, bot, update):
+    def birb_callback(self, update: Update, context: CallbackContext):
         print('Sending birb to ' + update.message.from_user.name + ' - ' + update.message.text)
-        self.send_photo(bot, update.message.chat_id, 'birb')
+        self.send_photo(context.bot, update.message.chat_id, 'birb')
 
-    def start_callback(self, bot, update):
+    def start_callback(self, update: Update, context: CallbackContext):
         config = ConfigObj(self.conf_file)
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=f'I am the birbs bot, I deliver the birbs.\n'\
-                              f'Type /birb receive a brand new birb from our newest collection of premium birbs!.\n'\
-                              f'Other content is available via the the following commands:\n'\
-                              f'{", ".join(config[cache_subreddits])}\n'\
-                              f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                 text=f'I am the birbs bot, I deliver the birbs.\n' \
+                                      f'Type /birb receive a brand new birb from our newest collection of premium birbs!.\n' \
+                                      f'Other content is available via the the following commands:\n' \
+                                      f'{", ".join(config[cache_subreddits])}\n' \
+                                      f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
 
-    def subscribe(self, bot, update, args):
-        if len(args) == 0:
+    def subscribe(self, update: Update, context: CallbackContext):
+        if len(context.args) == 0:
             args = [self.birbs_subreddit]
         chat = str(update.message.chat_id)
         config = ConfigObj(self.conf_file)
@@ -118,52 +119,52 @@ class BirbBot:
                 config.write()
                 config.reload()
                 print(f'Subscribtion of {subreddit} for chat {chat}')
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text=f'Subscription successful! Sending an image from {subreddit} every hour')
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text=f'Subscription successful! Sending an image from {subreddit} every hour')
             else:
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text=f'You are already subscribed to {subreddit}!')
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text=f'You are already subscribed to {subreddit}!')
 
-    def unsubscribe(self, bot, update, args):
+    def unsubscribe(self, update: Update, context: CallbackContext):
         chat = str(update.message.chat_id)
         config = ConfigObj(self.conf_file)
         if cache_subscriptions not in config or chat not in config[cache_subscriptions]:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text='Unsubscription unsuccessful! You are not subscribed to anything')
+            context.bot.send_message(chat_id=update.message.chat_id,
+                                     text='Unsubscription unsuccessful! You are not subscribed to anything')
             return
 
-        for folder in args:
+        for folder in context.args:
             if folder in config[cache_subscriptions][chat]:
                 chat_subs = config[cache_subscriptions][chat]
                 chat_subs.remove(folder)
                 config[cache_subscriptions][chat] = chat_subs
                 config.write()
                 config.reload()
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text=f'Unsubscription successful! Not sending images from {folder} anymore')
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text=f'Unsubscription successful! Not sending images from {folder} anymore')
             else:
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text=f'Unsubscription unsuccessful! You are not subscribed to {folder}')
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text=f'Unsubscription unsuccessful! You are not subscribed to {folder}')
 
-    def show_help(self, bot, update):
+    def show_help(self, update: Update, context: CallbackContext):
         config = ConfigObj(self.conf_file)
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=f'Type /birb receive a brand new birb from our newest collection of premium birbs!\n'\
-                              f'Other content is available via the the following commands:\n'\
-                              f'{", ".join(config[cache_subreddits])}\n'\
-                              f'Use the subscribe command with any amount of arguments to get hourly images\n'\
-                              f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                 text=f'Type /birb receive a brand new birb from our newest collection of premium birbs!\n' \
+                                      f'Other content is available via the the following commands:\n' \
+                                      f'{", ".join(config[cache_subreddits])}\n' \
+                                      f'Use the subscribe command with any amount of arguments to get hourly images\n' \
+                                      f'Code located at https://github.com/Zoidster/BirbBot\nAuthor: @LucaMN')
 
-    def insult(self, bot, update):
+    def insult(self, update: Update, context: CallbackContext):
         insult = get_insult()
         print('Sending insult to ' + update.message.from_user.name + ' - ' + insult)
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=f'{insult}')
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                 text=f'{insult}')
 
-    def unknown_callback(self, bot, update):
+    def unknown_callback(self, update: Update, context: CallbackContext):
         command = update.message.text[1:].split('@')[0]
         print('Sending {} to {}'.format(command, update.message.from_user.name))
-        self.send_photo(bot, update.message.chat_id, command)
+        self.send_photo(context.bot, update.message.chat_id, command)
 
     def send_photo(self, bot, chat, subreddit):
         if subreddit == 'birb':
