@@ -267,7 +267,6 @@ Betteldirne
 Bettelfrau
 Bettelgänger
 Bettelhund
-Betteljude
 Betteljunge
 Betteljun
 Bettelkerl
@@ -1081,7 +1080,6 @@ Freffe
 Freffer
 Frosch
 Frostkatze
-Fruchtjude
 Früchtchen
 Frühnickel
 Fuchsbart
@@ -1213,7 +1211,6 @@ Geheimniskrämer
 Geier
 Geiferbart
 Gelbstiefel
-Geldjude
 Geldkipper
 Geldsack
 Geldscheißer
@@ -1876,7 +1873,6 @@ Jähzornig
 Judas
 Jämmerlich
 Judasbart
-Jude
 Jagdhund
 Jagdteufel
 Jaherr
@@ -1895,10 +1891,6 @@ g
 IJesuitenriecher
 John
 Bull
-Judengeschmeiß
-Judengesicht
-Judenjunge
-Judenschicksel
 Jüdisch
 Jüngchen
 Junge
@@ -2142,7 +2134,6 @@ Kopflauser
 Kopflos
 Koppel
 Kordupel
-Kornjude
 Kornwucherer
 Knollig
 Knollmichel
@@ -3373,7 +3364,6 @@ Schacherer
 Saufbruder
 Saufell
 Saufgesell
-Schacherjude
 Saufgurgel
 Schachtelmärthe
 Saufpulle
@@ -4842,7 +4832,6 @@ Wortzänker
 Wrack
 Wrackgut
 Wucherer
-Wucherjude
 Würfeler
 Würfelspieler
 Wunderdoctor
@@ -4872,7 +4861,6 @@ Zierling
 Zeitsplitterer
 Zeitungskrämer äger
 Zierchen
-Zigeunervolk
 Zionswächter
 Zip
 Zipfel
@@ -4883,11 +4871,6 @@ Zöllner
 Zierbengel
 Ziernarr
 Zierpuppe
-Zigeuner
-Zigeunerbande
-Zigeunergesindel
-Zigeunerpack
-Zigeunerrotte
 Zofe
 Zoilus
 Zweifler
